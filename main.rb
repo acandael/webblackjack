@@ -4,7 +4,11 @@ require 'sinatra'
 set :sessions, true
 
 get '/' do
-  "Hello World"
+  erb :home
+end
+
+get '/user/profile' do
+  erb :"/user/profile"
 end
 
 
