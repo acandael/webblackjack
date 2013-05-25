@@ -1,20 +1,37 @@
 require 'rubygems'
 require 'sinatra'
-require 'sinatra/flash'
-require 'pry'
 
 set :sessions, true
 
-BLACKJACK_AMOUNT = 21
-DEALER_HIT_MIN = 17
+helpers do
+  def calculate_total(cards) # cards is [["H", "3"], ["D", "J"], ... ]
+    arr = cards.map{|element| element[1]}
 
+    total = 0
+    arr.each do |a|
+      if a == "A"
+        total += 11
+      else
+        total += a.to_i == 0 ? 10 : a.to_i
+      end
+    end
 
+    #correct for Aces
+    arr.select{|element| element == "A"}.count.times do
+      break if total <= 21
+      total -= 10
+    end
+
+    total
+  end
+end
+
+before do
+  @show_hit_or_stay_buttons = true
+end
 
 get '/' do
   if session[:player_name]
-    session[:player_credit] = 500
-    session[:bet_amount] = 0
-    session[:player_cards] = nil    
     redirect '/game'
   else
     redirect '/new_player'
@@ -25,112 +42,41 @@ get '/new_player' do
   erb :new_player
 end
 
-post'/new_player' do
+post '/new_player' do
   session[:player_name] = params[:player_name]
-  
   redirect '/game'
 end
 
+
 get '/game' do
-  
-  if !session[:player_cards]
-    suits = ['H', 'D', 'S', 'C']
+  # create a deck and put it in session
+  suits = ['H', 'D', 'C', 'S']
   values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
-  session[:deck] = suits.product(values).shuffle!
-  
+  session[:deck] = suits.product(values).shuffle! # [ ['H', '9'], ['C', 'K'] ... ]
+
+  # deal cards
   session[:dealer_cards] = []
   session[:player_cards] = []
   session[:dealer_cards] << session[:deck].pop
   session[:player_cards] << session[:deck].pop
   session[:dealer_cards] << session[:deck].pop
   session[:player_cards] << session[:deck].pop
-  end
-
-  
 
   erb :game
 end
 
-post '/hit' do
-  bet_amount = params[:place_bet].to_i
-  session[:bet_amount] = bet_amount
-  session[:player_credit] -= bet_amount
+post '/game/player/hit' do
   session[:player_cards] << session[:deck].pop
-  total = total(session[:player_cards])
-  if total > BLACKJACK_AMOUNT
-  @error = "sorry your busted"
+  if calculate_total(session[:player_cards]) > 21
+    @error = "Sorry, it looks like you busted"
+    @show_hit_or_stay_buttons = false
   end
-
-  # check if bust
-
-  redirect '/game'
+  erb :game
 end
 
-helpers do
-
-  def to_image(card)
-  suit = card[0].to_s
-  value = card[1].to_s
-
-  case suit
-  when "H"
-    suit = "hearts"
-  when "D"
-    suit = "diamonds"
-  when "S"
-    suit = "spades"
-  when "C"
-    suit = "clubs"
-  end
-
-  case value
-  when "J"
-    value = "jack"
-  when "Q"
-    value = "queen"
-  when "K"
-    value = "king"
-  when "A"
-    value = "ace"
-  end
-  "#{suit}_#{value}.jpg"
-  end
-
-  def total(cards)
-    # [['H', '3'], ['S', 'Q'], ... ]
-    arr = cards.map{|e| e[1] }
-
-    total = 0
-
-    arr.each do |value|
-      if value == "A"
-        total += 11
-      elsif value.to_i == 0 # J, Q, K
-        total += 10
-      else
-        total += value.to_i
-      end
-    end
-
-    #correct for Aces
-    arr.select{|e| e == "A"}.count.times do
-      total -= 10 if total > 21
-    end
-    total
-  end
-
-  def blackjack_or_bust?(total)
-    if total == BLACKJACK_AMOUNT
-    "congratulations, you hit blackjack"
-    elsif total > BLACKJACK_AMOUNT
-    "sorry your busted!"
-    end
-  end
-
-end #end helpers
-
-
-
-
-
+post '/game/player/stay' do
+  @success = "you have chosen to stay"
+  @show_hit_or_stay_buttons = false
+  erb :game
+end
 
