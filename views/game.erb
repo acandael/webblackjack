@@ -19,7 +19,7 @@ Player cards:
 </ul>
 </div>
 <div>
-  <p><%= session[:player_name] %>'s total: <%= total(session[:player_cards]) %></p>
+  <p><%= session[:player_name] %>'s total: <%= total(session[:player_cards]) %>. <%= session[:player_name] %>'s credits: <%= session[:player_credit] %>$. Bet amount this game <%= session[:bet_amount] %>$</p>
 </div>
 <form class="form-inline" action="/hit" method="post">
   <input type="text" class="input-mini" name="place_bet" />
