@@ -24,6 +24,27 @@ helpers do
 
     total
   end
+
+  def card_image(card) # ['H', '4']
+    suit = case card[0]
+      when 'H' then "hearts"
+      when 'D' then "diamonds"
+      when 'C' then "clubs"
+      when 'S' then "spades"
+    end
+
+    value = card[1]
+    if ['J', 'Q', 'K', 'A'].include?(value)
+      value = case card[1]
+        when 'J' then 'jack'
+        when 'Q' then 'queen'
+        when 'K' then 'king'
+        when 'A' then 'ace'
+      end
+    end
+
+    "<img src='/images/cards/#{suit}_#{value}.jpg' class='card_image' />"
+  end
 end
 
 before do
@@ -43,6 +64,10 @@ get '/new_player' do
 end
 
 post '/new_player' do
+  if params[:player_name].empty?
+    @error = "Name is required"
+    halt erb(:new_player)
+  end
   session[:player_name] = params[:player_name]
   redirect '/game'
 end
@@ -67,16 +92,61 @@ end
 
 post '/game/player/hit' do
   session[:player_cards] << session[:deck].pop
-  if calculate_total(session[:player_cards]) > 21
-    @error = "Sorry, it looks like you busted"
+  player_total = calculate_total(session[:player_cards])
+  if player_total == 21
+    @succes = "Congratiulations, #{session[:player_name]} hit blackjack!"
+    @show_hit_or_stay_buttons = false
+  elsif player_total > 21
+    @error = "Sorry, it looks like #{session[:player_name]} busted"
     @show_hit_or_stay_buttons = false
   end
   erb :game
 end
 
 post '/game/player/stay' do
-  @success = "you have chosen to stay"
+  @success = "#{session[:player_name]} has chosen to stay"
   @show_hit_or_stay_buttons = false
+  redirect '/game/dealer'
+end
+
+get '/game/dealer' do
+  @show_hit_or_stay_buttons = false
+
+  #decision tree
+  dealer_total = calculate_total(session[:dealer_cards])
+
+  if dealer_total == 21
+    @error = "Sorry, dealer hit blackjack!"
+  elsif dealer_total > 21
+    @success = "Congratulations, dealer busted. You win!"
+  elsif dealer_total >= 17 # 17, 18, 19, 20
+    # dealer stays
+    redirect '/game/compare'
+  else
+    # dealer hits
+    @show_dealer_hit_button = true
+  end
+
   erb :game
 end
 
+post '/game/dealer/hit' do
+  session[:dealer_cards] << session[:deck].pop
+  redirect '/game/dealer'
+end
+
+get '/game/compare' do
+  @show_hit_or_stay_buttons = true
+  player_total = calculate_total(session[:player_cards])
+  dealer_total = calculate_total(session[:dealer_cards])
+
+  if player_total < dealer_total
+    @error = "Sorry, you lost."
+  elsif player_total > dealer_total
+    @success = "Congratulations, you won!"
+  else
+    @success = "It's a tie!"
+  end
+
+  erb :game
+end
