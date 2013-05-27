@@ -7,6 +7,8 @@ BLACKJACK_AMOUNT = 21
 DEALER_MIN_HIT = 17
 INITIAL_POT_AMOUNT = 500
 
+#some change
+
 helpers do
   def calculate_total(cards) # cards is [["H", "3"], ["D", "J"], ... ]
     arr = cards.map{|element| element[1]}
